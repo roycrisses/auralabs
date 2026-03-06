@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uvicorn
+import multipart  # Explicitly import for PyInstaller bundling
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -55,7 +56,7 @@ app = create_app()
 def run_server(host: str = "127.0.0.1", port: int = 8420):
     """Start the uvicorn server."""
     uvicorn.run(
-        "aura.server.app:app",
+        app,  # Pass the app instance directly
         host=host,
         port=port,
         reload=False,

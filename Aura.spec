@@ -1,5 +1,4 @@
-# -*- mode: python ; coding: utf-8 -*-
-from PyInstaller.utils.hooks import collect_all
+from PyInstaller.utils.hooks import collect_all, collect_submodules, copy_metadata
 
 datas = []
 binaries = []
@@ -75,10 +74,22 @@ hiddenimports = [
     'GPUtil',
     'yaml',
     'rich',
+    'multipart',
 ]
 
-tmp_ret = collect_all('aura')
-datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
+# Collect all data, binaries and hiddenimports for main libraries
+for pkg in ['uvicorn', 'fastapi', 'starlette', 'multipart', 'langchain_core', 'langchain_openai', 'langgraph', 'pydantic', 'httpx', 'rich']:
+    tmp_ret = collect_all(pkg)
+    datas += tmp_ret[0]
+    binaries += tmp_ret[1]
+    hiddenimports += tmp_ret[2]
+    hiddenimports += collect_submodules(pkg)
+
+# Explicitly include metadata for python-multipart as FastAPI checks for it
+datas += copy_metadata('python-multipart')
+
+# Explicitly collect aura submodules
+hiddenimports += collect_submodules('aura')
 
 
 a = Analysis(

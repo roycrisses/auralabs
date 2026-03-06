@@ -1,8 +1,10 @@
 {
-  "$schema": "https://raw.githubusercontent.com/nickel-org/nickel/master/src/schema.json",
+  "$schema": "https://schema.tauri.app/capability/2",
   "identifier": "default",
   "description": "Default capabilities for Agent Aura",
-  "windows": ["main"],
+  "windows": [
+    "main"
+  ],
   "permissions": [
     "core:default",
     "shell:allow-open",
