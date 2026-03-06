@@ -37,12 +37,18 @@ pub fn run() {
 
             let child = if sidecar_path.exists() {
                 // Production: run the bundled sidecar
-                match std::process::Command::new(&sidecar_path)
-                    .arg("--server")
-                    .stdout(std::process::Stdio::null())
-                    .stderr(std::process::Stdio::null())
-                    .spawn()
+                let mut cmd = std::process::Command::new(&sidecar_path);
+                cmd.arg("--server")
+                   .stdout(std::process::Stdio::null())
+                   .stderr(std::process::Stdio::null());
+
+                #[cfg(windows)]
                 {
+                    use std::os::windows::process::CommandExt;
+                    cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+                }
+
+                match cmd.spawn() {
                     Ok(child) => {
                         println!("[Aura] Backend sidecar started (pid {})", child.id());
                         Some(child)
@@ -54,13 +60,19 @@ pub fn run() {
                 }
             } else {
                 // Development: try to start `python -m aura --server`
-                match std::process::Command::new("python")
-                    .args(["-m", "aura", "--server"])
-                    .current_dir(r"D:\automation\aura")
-                    .stdout(std::process::Stdio::null())
-                    .stderr(std::process::Stdio::null())
-                    .spawn()
+                let mut cmd = std::process::Command::new("python");
+                cmd.args(["-m", "aura", "--server"])
+                   .current_dir(r"D:\automation\aura")
+                   .stdout(std::process::Stdio::null())
+                   .stderr(std::process::Stdio::null());
+
+                #[cfg(windows)]
                 {
+                    use std::os::windows::process::CommandExt;
+                    cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+                }
+
+                match cmd.spawn() {
                     Ok(child) => {
                         println!("[Aura] Dev backend started (pid {})", child.id());
                         Some(child)

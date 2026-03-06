@@ -178,12 +178,17 @@ def _execute_task(task: dict) -> None:
     # If there's a command, run it
     if task.get("command"):
         import subprocess
+        import sys
+        creationflags = 0
+        if sys.platform == "win32":
+            creationflags = subprocess.CREATE_NO_WINDOW
         try:
             subprocess.Popen(
                 task["command"],
                 shell=True,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
+                creationflags=creationflags,
             )
         except Exception:
             pass

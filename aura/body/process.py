@@ -28,6 +28,11 @@ def run_command(command: str, timeout: int = 30) -> dict:
     """Execute a shell command and return stdout/stderr/returncode."""
     if not _is_safe(command):
         raise PermissionError(f"Blocked dangerous command: {command}")
+    creationflags = 0
+    import sys
+    if sys.platform == "win32":
+        creationflags = subprocess.CREATE_NO_WINDOW
+
     try:
         result = subprocess.run(
             command,
@@ -36,6 +41,7 @@ def run_command(command: str, timeout: int = 30) -> dict:
             text=True,
             timeout=timeout,
             cwd=r"D:\automation",
+            creationflags=creationflags,
         )
         return {
             "stdout": result.stdout[:5000],

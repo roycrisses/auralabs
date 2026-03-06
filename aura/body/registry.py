@@ -35,8 +35,8 @@ def set_confirm_callback(callback: Callable[[str, dict], bool] | None) -> None:
     _confirm_callback = callback
 
 
-def execute_tool(call: ToolCall) -> ToolResult:
-    """Synchronously execute a tool call and return the result."""
+async def execute_tool(call: ToolCall) -> ToolResult:
+    """Execute a tool call and return the result."""
     from aura.body.confirm import is_blocked, needs_confirmation
 
     func = TOOL_REGISTRY.get(call.tool_name)
@@ -57,6 +57,8 @@ def execute_tool(call: ToolCall) -> ToolResult:
 
     # Check if tool needs user confirmation
     if needs_confirmation(call.tool_name) and _confirm_callback is not None:
+        # Note: _confirm_callback is likely sync. If we expect async confirmation, 
+        # we'd need to update its signature too.
         approved = _confirm_callback(call.tool_name, call.arguments)
         if not approved:
             return ToolResult(
@@ -68,16 +70,12 @@ def execute_tool(call: ToolCall) -> ToolResult:
     from aura.body.audit import log_tool_execution
 
     try:
+        # Handle both sync and async tools gracefully
         if asyncio.iscoroutinefunction(func):
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                import concurrent.futures
-                with concurrent.futures.ThreadPoolExecutor() as pool:
-                    result = pool.submit(asyncio.run, func(**call.arguments)).result()
-            else:
-                result = asyncio.run(func(**call.arguments))
+            result = await func(**call.arguments)
         else:
             result = func(**call.arguments)
+            
         log_tool_execution(call.tool_name, call.arguments, success=True, output=str(result))
         return ToolResult(tool_name=call.tool_name, success=True, output=result)
     except Exception as e:

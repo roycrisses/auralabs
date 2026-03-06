@@ -53,6 +53,7 @@ export type WsEvent =
   | { type: "tool_call"; tool: string; args: Record<string, unknown> }
   | { type: "tool_result"; tool: string; success: boolean; output: string }
   | { type: "response"; agent: string; content: string }
+  | { type: "token"; content: string }
   | { type: "done" }
   | { type: "error"; content: string };
 

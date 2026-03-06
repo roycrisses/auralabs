@@ -25,9 +25,11 @@ def get_llm(
             api_key=byok["api_key"],
             model=byok["model"],
             temperature=temperature,
-            max_tokens=max_tokens,
+            max_tokens=None,
+            model_kwargs={"max_tokens": max_tokens},
             timeout=120,
             max_retries=2,
+            streaming=True,
         )
 
     settings = get_settings()
@@ -38,7 +40,9 @@ def get_llm(
         api_key=api_key,
         model=model_id,
         temperature=temperature,
-        max_tokens=max_tokens,
+        max_tokens=None,  # Disable top-level mapping to max_completion_tokens
+        model_kwargs={"max_tokens": max_tokens}, # Pass raw max_tokens to NIM
         timeout=120,
         max_retries=2,
+        streaming=True,
     )

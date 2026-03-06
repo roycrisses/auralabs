@@ -32,6 +32,9 @@ dependencies = [
 dev = ["pytest>=8.0", "pytest-asyncio>=0.24"]
 service = ["pywin32>=306"]
 
+[tool.setuptools.packages.find]
+include = ["aura*"]
+
 [build-system]
 requires = ["setuptools>=75.0"]
-build-backend = "setuptools.backends._legacy:_Backend"
+build-backend = "setuptools.build_meta"

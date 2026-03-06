@@ -1,4 +1,7 @@
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import type { CSSProperties } from "react";
+
+const appWindow = getCurrentWindow();
 
 const barStyle: CSSProperties = {
   display: "flex",
@@ -7,6 +10,7 @@ const barStyle: CSSProperties = {
   padding: "8px 12px",
   borderBottom: "1px solid var(--glass-border)",
   userSelect: "none",
+  height: "40px",
 };
 
 const titleStyle: CSSProperties = {
@@ -19,18 +23,22 @@ const titleStyle: CSSProperties = {
   gap: "8px",
 };
 
-const btnGroupStyle: CSSProperties = {
+const btnGroupStyle: any = {
   display: "flex",
   gap: "6px",
+  zIndex: 1000,
+  WebkitAppRegion: "no-drag",
 };
 
-const controlBtn: CSSProperties = {
+const controlBtn: any = {
   width: "12px",
   height: "12px",
   borderRadius: "50%",
   border: "none",
   cursor: "pointer",
   transition: "opacity 0.15s",
+  WebkitAppRegion: "no-drag",
+  position: "relative",
 };
 
 interface Props {
@@ -38,14 +46,12 @@ interface Props {
 }
 
 export function TitleBar({ onSettingsClick }: Props) {
-  const minimize = async () => {
-    const { getCurrentWindow } = await import("@tauri-apps/api/window");
-    getCurrentWindow().minimize();
+  const minimize = () => {
+    appWindow.minimize();
   };
 
-  const close = async () => {
-    const { getCurrentWindow } = await import("@tauri-apps/api/window");
-    getCurrentWindow().close();
+  const close = () => {
+    appWindow.close();
   };
 
   return (
@@ -57,20 +63,42 @@ export function TitleBar({ onSettingsClick }: Props) {
       <div style={btnGroupStyle}>
         {onSettingsClick && (
           <button
-            onClick={onSettingsClick}
-            style={{ ...controlBtn, background: "#8b5cf6", width: "auto", borderRadius: "4px", padding: "0 6px", fontSize: "10px", color: "#fff" }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onSettingsClick();
+            }}
+            style={{ 
+              ...controlBtn, 
+              background: "#8b5cf6", 
+              width: "auto", 
+              borderRadius: "4px", 
+              padding: "0 8px", 
+              height: "20px",
+              fontSize: "10px", 
+              color: "#fff",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontWeight: 700
+            }}
             title="Settings"
           >
-            SET
+            SETTINGS
           </button>
         )}
         <button
-          onClick={minimize}
+          onClick={(e) => {
+            e.stopPropagation();
+            minimize();
+          }}
           style={{ ...controlBtn, background: "#f59e0b" }}
           title="Minimize"
         />
         <button
-          onClick={close}
+          onClick={(e) => {
+            e.stopPropagation();
+            close();
+          }}
           style={{ ...controlBtn, background: "#ef4444" }}
           title="Close"
         />

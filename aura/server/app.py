@@ -61,6 +61,7 @@ def run_server(host: str = "127.0.0.1", port: int = 8420):
         port=port,
         reload=False,
         log_level="info",
+        use_colors=False,
     )
 
 

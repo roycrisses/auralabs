@@ -41,7 +41,8 @@ def build_python_backend():
     """Step 1: Build aura-server.exe with PyInstaller."""
     step("Building Python backend (aura-server.exe)")
 
-    run(["pyinstaller", "--clean", "--noconfirm", "Aura.spec"], cwd=ROOT)
+    run([sys.executable, "-m", "PyInstaller", "--clean", "--noconfirm", "Aura.spec"], cwd=ROOT)
+
 
     exe_path = ROOT / "dist" / "aura-server.exe"
     if not exe_path.exists():
@@ -101,6 +102,38 @@ def build_tauri():
         print(f"\n  Build complete. Check {release_dir} for output.")
 
 
+def deploy_to_agentaura():
+    """Step 4: Copy final artifacts to D:\\agentaura."""
+    step("Deploying to D:\\agentaura")
+    
+    DEST = Path(r"D:\agentaura")
+    DEST.mkdir(parents=True, exist_ok=True)
+    
+    # Source paths
+    release_dir = TAURI_DIR / "target" / "release"
+    exe_path = release_dir / "AgentAura.exe"
+    
+    if not exe_path.exists():
+        # Try finding in bundle msi or setup
+        msi_paths = list((release_dir / "bundle" / "msi").glob("*.msi"))
+        if msi_paths:
+            print(f"  Found installer: {msi_paths[0]}")
+            shutil.copy2(str(msi_paths[0]), str(DEST / msi_paths[0].name))
+
+    if exe_path.exists():
+        shutil.copy2(str(exe_path), str(DEST / "AgentAura.exe"))
+        print(f"  Copied AgentAura.exe to {DEST}")
+    
+    # Also copy the sidecar just in case manual start is needed
+    sidecar = ROOT / "dist" / "aura-server.exe"
+    if sidecar.exists():
+        shutil.copy2(str(sidecar), str(DEST / "aura-server.exe"))
+        print(f"  Copied aura-server.exe to {DEST}")
+
+    # Copy any other resources if needed
+    # ...
+
+
 def main():
     print("=" * 60)
     print("  AgentAura Build System")
@@ -115,11 +148,15 @@ def main():
     # Step 3: Build Tauri
     build_tauri()
 
+    # Step 4: Deploy
+    deploy_to_agentaura()
+
     step("BUILD COMPLETE!")
     print("  Output locations:")
     print(f"    Backend: {ROOT / 'dist' / 'aura-server.exe'}")
     print(f"    Sidecar: {TAURI_BIN / 'aura-server.exe'}")
     print(f"    App:     {TAURI_DIR / 'target' / 'release'}")
+    print(f"    Deploy:  D:\\agentaura")
     print()
 
 

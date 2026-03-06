@@ -30,12 +30,18 @@ def send_notification(title: str, message: str, duration: int = 5) -> str:
     [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier("Aura").Show($toast)
     """
 
+    creationflags = 0
+    import sys
+    if sys.platform == "win32":
+        creationflags = subprocess.CREATE_NO_WINDOW
+
     try:
         result = subprocess.run(
             ["powershell", "-NoProfile", "-Command", ps_script],
             capture_output=True,
             text=True,
             timeout=10,
+            creationflags=creationflags,
         )
         if result.returncode == 0:
             return f"Notification sent: {title}"
@@ -58,12 +64,16 @@ def _fallback_notification(title: str, message: str) -> str:
     Start-Sleep -Seconds 6
     $notify.Dispose()
     """
+    creationflags = 0
+    import sys
+    if sys.platform == "win32":
+        creationflags = subprocess.CREATE_NO_WINDOW
     try:
         subprocess.Popen(
             ["powershell", "-NoProfile", "-Command", ps_fallback],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
-            creationflags=subprocess.DETACHED_PROCESS,
+            creationflags=creationflags | subprocess.DETACHED_PROCESS,
         )
         return f"Notification sent (balloon): {title}"
     except Exception as e:

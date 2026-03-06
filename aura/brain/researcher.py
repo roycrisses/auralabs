@@ -7,6 +7,7 @@ from langchain_core.tools import tool
 
 from aura.brain.context import trim_messages
 from aura.brain.llm import get_llm
+from aura.brain.tools import bind_agent_tools
 from aura.models import AgentState, ToolCall
 
 RESEARCHER_SYSTEM_PROMPT = """\
@@ -68,14 +69,14 @@ def recall_facts(query: str, top_k: int = 5) -> str:
 RESEARCHER_TOOLS = [web_search, web_fetch, read_file, clipboard_read, search_knowledge, delegate_to_agent, recall_facts]
 
 
-def researcher_node(state: AgentState) -> dict:
+async def researcher_node(state: AgentState) -> dict:
     """LangGraph node: invoke the Researcher agent."""
     llm = get_llm("researcher", temperature=0.4, max_tokens=4096)
-    llm_with_tools = llm.bind_tools(RESEARCHER_TOOLS)
+    llm_with_tools = bind_agent_tools(llm, RESEARCHER_TOOLS)
 
     messages = [SystemMessage(content=RESEARCHER_SYSTEM_PROMPT)] + state["messages"]
     messages = trim_messages(messages, agent_role="researcher")
-    response = llm_with_tools.invoke(messages)
+    response = await llm_with_tools.ainvoke(messages)
 
     tool_calls = []
     if hasattr(response, "tool_calls") and response.tool_calls:

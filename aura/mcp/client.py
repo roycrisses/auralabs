@@ -52,9 +52,9 @@ async def _connect_server_async(name: str, command: str, args: list[str], env: d
                 for mcp_tool in tools:
                     tool_name = f"mcp_{name}_{mcp_tool.name}"
                     description = mcp_tool.description or f"MCP tool from {name}"
+                    schema = mcp_tool.inputSchema if hasattr(mcp_tool, "inputSchema") else {"type": "object", "properties": {}}
 
                     # Create a wrapper that calls the MCP server
-                    # We need a persistent connection, so store the session
                     def _make_wrapper(srv_name: str, t_name: str, desc: str):
                         def wrapper(**kwargs) -> str:
                             """Call an MCP tool on a connected server."""
@@ -68,12 +68,13 @@ async def _connect_server_async(name: str, command: str, args: list[str], env: d
                     TOOL_REGISTRY[tool_name] = wrapper_fn
                     registered_tools.append(tool_name)
 
-                # Store connection info (tools only — we can't persist the session across async contexts)
+                # Store connection info
                 _connected_servers[name] = {
                     "command": command,
                     "args": args,
                     "env": env,
                     "tools": registered_tools,
+                    "tool_schemas": {t.name: getattr(t, "inputSchema", {"type": "object", "properties": {}}) for t in tools},
                     "tool_descriptions": {t.name: t.description or "" for t in tools},
                 }
 

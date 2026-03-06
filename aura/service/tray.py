@@ -64,7 +64,7 @@ def _start_server():
             import uvicorn
             from aura.server.app import create_app
             app = create_app()
-            uvicorn.run(app, host="127.0.0.1", port=8420, log_level="warning")
+            uvicorn.run(app, host="127.0.0.1", port=8420, log_level="warning", use_colors=False)
         except Exception as e:
             print(f"Server error: {e}")
         finally:

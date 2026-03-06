@@ -50,12 +50,17 @@ def open_application(name: str, args: str = "") -> str:
     if args:
         cmd.extend(args.split())
 
+    import sys
+    creationflags = subprocess.DETACHED_PROCESS
+    if sys.platform == "win32":
+        creationflags |= subprocess.CREATE_NO_WINDOW
+
     try:
         subprocess.Popen(
             cmd,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
-            creationflags=subprocess.DETACHED_PROCESS,
+            creationflags=creationflags,
         )
         return f"Launched: {target} {args}".strip()
     except FileNotFoundError:

@@ -23,11 +23,12 @@ from aura.models import AgentState, ToolCall, ToolResult
 MAX_TOOL_ITERATIONS = 6
 
 
-def tool_exec_node(state: AgentState) -> dict:
+async def tool_exec_node(state: AgentState) -> dict:
     """Execute pending tool calls via the body registry."""
     results: list[ToolResult] = []
     for tc in state.get("tool_calls", []):
-        result = execute_tool(tc)
+        # registry.execute_tool handles both sync and async tools
+        result = await execute_tool(tc)
         results.append(result)
 
     # Build tool messages for the LLM to process
@@ -54,7 +55,7 @@ def tool_exec_node(state: AgentState) -> dict:
     }
 
 
-def respond_node(state: AgentState) -> dict:
+async def respond_node(state: AgentState) -> dict:
     """Final pass — terminal node before END."""
     return {"messages": [], "iteration": state.get("iteration", 0) + 1}
 

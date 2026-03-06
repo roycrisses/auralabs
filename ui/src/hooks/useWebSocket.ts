@@ -60,6 +60,9 @@ export function useWebSocket() {
           s.addAssistantMessage(event.content, event.agent);
           s.setCurrentAgent(event.agent);
           break;
+        case "token":
+          s.updateAssistantMessage(event.content);
+          break;
         case "done":
           s.setProcessing(false);
           break;

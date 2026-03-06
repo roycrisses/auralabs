@@ -1,8 +1,60 @@
-"""Aura CLI entry point — run with `python -m aura`."""
-
-from __future__ import annotations
-
+import logging
+import os
 import sys
+from pathlib import Path
+
+# Setup logging to file
+if getattr(sys, 'frozen', False):
+    # Running from bundled exe
+    APP_DIR = Path(os.getenv("LOCALAPPDATA", str(Path.home()))) / "AgentAura"
+else:
+    # Running from source
+    APP_DIR = Path(__file__).parent.parent.resolve()
+
+LOG_DIR = APP_DIR / "logs"
+LOG_DIR.mkdir(parents=True, exist_ok=True)
+LOG_FILE = LOG_DIR / "aura.log"
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    handlers=[
+        logging.FileHandler(str(LOG_FILE)),
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+logger = logging.getLogger("aura.startup")
+logger.info("Aura starting up...")
+import subprocess
+import asyncio
+
+# Global console window suppression for Windows
+if sys.platform == "win32":
+    # 1. Monkeypatch standard subprocess.Popen (used by most libraries)
+    _orig_popen = subprocess.Popen
+    def _patched_popen(*args, **kwargs):
+        # Add CREATE_NO_WINDOW to suppress terminal flashes
+        kwargs["creationflags"] = kwargs.get("creationflags", 0) | subprocess.CREATE_NO_WINDOW
+        return _orig_popen(*args, **kwargs)
+    subprocess.Popen = _patched_popen
+
+    # 2. Monkeypatch asyncio subprocesses (used by MCP and others)
+    _orig_exec = asyncio.create_subprocess_exec
+    _orig_shell = asyncio.create_subprocess_shell
+
+    async def _patched_exec(*args, **kwargs):
+        kwargs["creationflags"] = kwargs.get("creationflags", 0) | subprocess.CREATE_NO_WINDOW
+        return await _orig_exec(*args, **kwargs)
+
+    async def _patched_shell(*args, **kwargs):
+        kwargs["creationflags"] = kwargs.get("creationflags", 0) | subprocess.CREATE_NO_WINDOW
+        return await _orig_shell(*args, **kwargs)
+
+    asyncio.create_subprocess_exec = _patched_exec
+    asyncio.create_subprocess_shell = _patched_shell
+
+    # 3. Add flag to environment for scripts that might check it
+    os.environ["AURA_CONSOLE_HIDDEN"] = "1"
 
 # Import body modules to trigger tool registration
 import aura.body.clipboard
@@ -193,18 +245,35 @@ def run_tray():
 
 
 if __name__ == "__main__":
-    if "--server" in sys.argv:
+    import os
+    
+    # Ensure stdout/stderr are not None even in windowed mode
+    if sys.stdout is None:
+        sys.stdout = open(os.devnull, 'w')
+    if sys.stderr is None:
+        sys.stderr = open(os.devnull, 'w')
+
+    args = sys.argv[1:]
+    
+    # Detect if we have a valid stdin (interactive console)
+    is_interactive = sys.stdin is not None and hasattr(sys.stdin, "isatty") and sys.stdin.isatty()
+
+    if "--server" in args:
         run_server()
-    elif "--mcp-server" in sys.argv:
+    elif "--mcp-server" in args:
         from aura.mcp.server import run_mcp_server
         run_mcp_server()
-    elif "--tray" in sys.argv:
+    elif "--tray" in args:
         run_tray()
-    elif "--startup" in sys.argv:
+    elif "--startup" in args:
         from aura.service.startup import add_to_startup
         print(add_to_startup())
-    elif "--no-startup" in sys.argv:
+    elif "--no-startup" in args:
         from aura.service.startup import remove_from_startup
         print(remove_from_startup())
+    elif not is_interactive:
+        # If no interactive console, default to server mode instead of failing CLI
+        run_server()
     else:
         run_cli()
+

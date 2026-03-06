@@ -24,6 +24,7 @@ interface ChatState {
   removeAttachment: (path: string) => void;
   clearAttachments: () => void;
   addAssistantMessage: (content: string, agent: string) => void;
+  updateAssistantMessage: (content: string) => void;
   addThinking: (agent: string, content: string) => void;
   addToolEvent: (event: ToolCallEvent | ToolResultEvent) => void;
   setCurrentAgent: (agent: string | null) => void;
@@ -77,6 +78,20 @@ export const useChatStore = create<ChatState>((set) => ({
         },
       ],
     })),
+
+  updateAssistantMessage: (content) =>
+    set((s) => {
+      const last = s.messages[s.messages.length - 1];
+      if (last && last.role === "assistant") {
+        return {
+          messages: [
+            ...s.messages.slice(0, -1),
+            { ...last, content: last.content + content },
+          ],
+        };
+      }
+      return s;
+    }),
 
   addThinking: (agent, content) =>
     set((s) => ({

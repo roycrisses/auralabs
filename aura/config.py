@@ -13,11 +13,11 @@ from pydantic import BaseModel
 KEYS_FILE = Path(r"D:\automation\AI keys and tetails.txt")
 
 MODEL_REGISTRY: dict[str, str] = {
-    "router": "qwen/qwen3.5-397b-a17b",
-    "kernel": "qwen/qwen2.5-coder-32b-instruct",
-    "researcher": "z-ai/glm5",
-    "creator": "qwen/qwen3-coder-480b-a35b-instruct",
-    "vision": "nvidia/llama-3.1-nemotron-nano-vl-8b-v1",
+    "router": "meta/llama-3.1-8b-instruct",
+    "kernel": "meta/llama-3.1-70b-instruct",
+    "researcher": "meta/llama-3.1-70b-instruct",
+    "creator": "meta/llama-3.1-70b-instruct",
+    "vision": "nvidia/llama-3.2-nvlm-1.1-72b-instruct",
     "reward": "nvidia/llama-3.1-nemotron-70b-reward",
 }
 

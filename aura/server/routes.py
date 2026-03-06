@@ -46,8 +46,6 @@ class ChatResponse(BaseModel):
     agent: str
     session_id: str
     thinking_log: list[str]
-
-
 @router.post("/chat", response_model=ChatResponse)
 async def chat(req: ChatRequest):
     """Send a message and get a synchronous response."""
@@ -77,9 +75,11 @@ async def chat(req: ChatRequest):
         "tool_results": [],
         "thinking_log": [],
         "iteration": 0,
+        "delegation_depth": 0,
     }
 
-    result = graph.invoke(initial_state)
+    # Use ainvoke for async graph
+    result = await graph.ainvoke(initial_state)
 
     # Extract the last AI message
     response_text = ""
@@ -104,7 +104,8 @@ async def chat(req: ChatRequest):
 
 @router.websocket("/chat/stream")
 async def chat_stream(ws: WebSocket):
-    """WebSocket endpoint for streaming chat with thinking events."""
+    """WebSocket endpoint for streaming chat with thinking events and tokens."""
+    from aura.brain.run import run_graph
     await ws.accept()
 
     # Per-connection session
@@ -133,65 +134,33 @@ async def chat_stream(ws: WebSocket):
 
             # Load history
             history = messages_to_langchain(get_messages(session_id, limit=50))
-
-            graph = _get_graph()
-            initial_state = {
-                "messages": history,
-                "current_agent": "",
-                "tool_calls": [],
-                "tool_results": [],
-                "thinking_log": [],
-                "iteration": 0,
-            }
-
-            # Stream graph execution step by step
-            current_agent = "unknown"
-            response_text = ""
-
+            
             try:
-                for event in graph.stream(initial_state, stream_mode="updates"):
-                    for node_name, update in event.items():
-                        if update.get("current_agent"):
-                            current_agent = update["current_agent"]
+                current_agent = "router"
+                full_response = ""
 
-                        for thought in update.get("thinking_log", []):
-                            await ws.send_json({
-                                "type": "thinking",
-                                "agent": node_name,
-                                "content": thought,
-                            })
+                # Delegate to the specialized run_graph utility
+                async for event in run_graph(message, history, session_id):
+                    # Forward events to the websocket
+                    await ws.send_json(event)
+                    
+                    # Accumulate response for memory
+                    if event["type"] == "token":
+                        full_response += event["content"]
+                    elif event["type"] == "route":
+                        current_agent = event["agent"]
+                    elif event["type"] == "thinking" and "agent" in event:
+                        current_agent = event["agent"]
 
-                        for tc in update.get("tool_calls", []):
-                            await ws.send_json({
-                                "type": "tool_call",
-                                "tool": tc.tool_name,
-                                "args": tc.arguments,
-                            })
-
-                        for tr in update.get("tool_results", []):
-                            await ws.send_json({
-                                "type": "tool_result",
-                                "tool": tr.tool_name,
-                                "success": tr.success,
-                                "output": str(tr.output)[:1000],
-                            })
-
-                        for msg in update.get("messages", []):
-                            if hasattr(msg, "type") and msg.type == "ai" and msg.content:
-                                response_text = msg.content
-                                await ws.send_json({
-                                    "type": "response",
-                                    "agent": current_agent,
-                                    "content": msg.content,
-                                })
-
-                # Save assistant response to memory
-                if response_text:
-                    save_message(session_id, "assistant", response_text, agent=current_agent)
+                # Save assistant response to memory once done
+                if full_response:
+                    save_message(session_id, "assistant", full_response, agent=current_agent)
 
                 await ws.send_json({"type": "done", "session_id": session_id})
 
             except Exception as e:
+                import traceback
+                traceback.print_exc()
                 await ws.send_json({
                     "type": "error",
                     "content": f"{type(e).__name__}: {e}",

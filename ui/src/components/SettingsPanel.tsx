@@ -1,5 +1,4 @@
 import { useEffect, useState, type CSSProperties } from "react";
-import { GlassCard } from "./GlassCard";
 
 interface Settings {
   models: Record<string, string>;
@@ -10,55 +9,108 @@ interface Settings {
 
 const API = "http://localhost:8420/api";
 
-const panelStyle: CSSProperties = {
+const overlayStyle: CSSProperties = {
   position: "fixed",
-  top: 0,
-  right: 0,
-  width: "380px",
+  inset: 0,
+  background: "rgba(0, 0, 0, 0.5)",
+  zIndex: 200,
+  display: "flex",
+  justifyContent: "flex-end",
+};
+
+const panelStyle: CSSProperties = {
+  width: "400px",
   height: "100vh",
-  zIndex: 100,
   display: "flex",
   flexDirection: "column",
   overflow: "hidden",
-  borderLeft: "1px solid var(--glass-border)",
-  background: "var(--bg-card)",
+  background: "var(--bg-secondary)",
+  borderLeft: "1px solid var(--border-primary)",
+  animation: "fade-in 0.15s ease-out",
 };
 
 const headerStyle: CSSProperties = {
   display: "flex",
   justifyContent: "space-between",
   alignItems: "center",
-  padding: "12px 16px",
-  borderBottom: "1px solid var(--glass-border)",
+  padding: "16px 20px",
+  borderBottom: "1px solid var(--border-primary)",
 };
 
 const bodyStyle: CSSProperties = {
   flex: 1,
   overflowY: "auto",
-  padding: "12px 16px",
+  padding: "16px 20px",
   display: "flex",
   flexDirection: "column",
-  gap: "16px",
+  gap: "20px",
 };
 
-const labelStyle: CSSProperties = {
+const sectionTitleStyle: CSSProperties = {
   fontSize: "11px",
   textTransform: "uppercase",
-  opacity: 0.6,
-  letterSpacing: "0.5px",
-  marginBottom: "6px",
+  fontWeight: 600,
+  color: "var(--text-tertiary)",
+  letterSpacing: "0.06em",
+  marginBottom: "10px",
+};
+
+const cardStyle: CSSProperties = {
+  background: "var(--bg-tertiary)",
+  border: "1px solid var(--border-primary)",
+  borderRadius: "var(--radius-md)",
+  padding: "14px",
 };
 
 const inputStyle: CSSProperties = {
   width: "100%",
-  padding: "6px 10px",
-  background: "rgba(255,255,255,0.05)",
-  border: "1px solid var(--glass-border)",
-  borderRadius: "6px",
-  color: "inherit",
+  padding: "8px 12px",
+  background: "var(--bg-primary)",
+  border: "1px solid var(--border-primary)",
+  borderRadius: "var(--radius-sm)",
+  color: "var(--text-primary)",
   fontSize: "13px",
-  fontFamily: "inherit",
+  fontFamily: "'JetBrains Mono', monospace",
+  outline: "none",
+  transition: "border-color var(--transition)",
 };
+
+const closeBtnStyle: CSSProperties = {
+  background: "none",
+  border: "none",
+  color: "var(--text-secondary)",
+  cursor: "pointer",
+  fontSize: "18px",
+  padding: "4px 8px",
+  borderRadius: "var(--radius-sm)",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  transition: "background var(--transition)",
+};
+
+const toggleStyle = (active: boolean): CSSProperties => ({
+  width: "40px",
+  height: "22px",
+  borderRadius: "11px",
+  background: active ? "var(--accent)" : "var(--bg-hover)",
+  border: "1px solid var(--border-primary)",
+  cursor: "pointer",
+  position: "relative",
+  transition: "background var(--transition)",
+  flexShrink: 0,
+});
+
+const toggleDotStyle = (active: boolean): CSSProperties => ({
+  width: "16px",
+  height: "16px",
+  borderRadius: "50%",
+  background: "#fff",
+  position: "absolute",
+  top: "2px",
+  left: active ? "20px" : "2px",
+  transition: "left var(--transition)",
+});
 
 interface Props {
   onClose: () => void;
@@ -82,9 +134,7 @@ export function SettingsPanel({ onClose }: Props) {
       body: JSON.stringify({ models: { [role]: model } }),
     });
     const data = await res.json();
-    if (settings) {
-      setSettings({ ...settings, models: data.models });
-    }
+    if (settings) setSettings({ ...settings, models: data.models });
   };
 
   const toggleConfirmation = async () => {
@@ -98,94 +148,135 @@ export function SettingsPanel({ onClose }: Props) {
     setSettings({ ...settings, confirmation_enabled: data.confirmation_enabled });
   };
 
-  if (error) {
-    return (
-      <div style={panelStyle}>
-        <div style={headerStyle}>
-          <strong>Settings</strong>
-          <button onClick={onClose} style={{ background: "none", border: "none", color: "inherit", cursor: "pointer" }}>X</button>
-        </div>
-        <div style={bodyStyle}>
-          <p style={{ color: "var(--accent-red, #f66)" }}>Failed to load settings: {error}</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!settings) {
-    return (
-      <div style={panelStyle}>
-        <div style={headerStyle}>
-          <strong>Settings</strong>
-          <button onClick={onClose} style={{ background: "none", border: "none", color: "inherit", cursor: "pointer" }}>X</button>
-        </div>
-        <div style={bodyStyle}><p>Loading...</p></div>
-      </div>
-    );
-  }
-
   return (
-    <div style={panelStyle}>
-      <div style={headerStyle}>
-        <strong>Settings</strong>
-        <button onClick={onClose} style={{ background: "none", border: "none", color: "inherit", cursor: "pointer", fontSize: "16px" }}>X</button>
-      </div>
-      <div style={bodyStyle}>
-        {/* Model configuration */}
-        <GlassCard padding="12px">
-          <div style={labelStyle}>Agent Models</div>
-          {Object.entries(settings.models).map(([role, model]) => (
-            <div key={role} style={{ marginBottom: "8px" }}>
-              <div style={{ fontSize: "12px", fontWeight: 600, marginBottom: "4px", textTransform: "capitalize" }}>{role}</div>
-              <input
-                style={inputStyle}
-                value={model}
-                onChange={(e) => {
-                  setSettings({ ...settings, models: { ...settings.models, [role]: e.target.value } });
-                }}
-                onBlur={(e) => updateModel(role, e.target.value)}
-              />
+    <div style={overlayStyle} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div style={panelStyle}>
+        <div style={headerStyle}>
+          <span style={{ fontSize: "16px", fontWeight: 600 }}>Settings</span>
+          <button
+            onClick={onClose}
+            style={closeBtnStyle}
+            onMouseEnter={(e) => { (e.target as HTMLElement).style.background = "var(--bg-hover)"; }}
+            onMouseLeave={(e) => { (e.target as HTMLElement).style.background = "none"; }}
+          >
+            ✕
+          </button>
+        </div>
+
+        <div style={bodyStyle}>
+          {error && (
+            <div style={{ ...cardStyle, borderColor: "var(--error)", color: "var(--error)" }}>
+              Failed to load settings: {error}
             </div>
-          ))}
-        </GlassCard>
+          )}
 
-        {/* Safety settings */}
-        <GlassCard padding="12px">
-          <div style={labelStyle}>Safety</div>
-          <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
-            <input
-              type="checkbox"
-              checked={settings.confirmation_enabled}
-              onChange={toggleConfirmation}
-            />
-            <span style={{ fontSize: "13px" }}>Require confirmation for dangerous tools</span>
-          </label>
-        </GlassCard>
+          {!settings && !error && (
+            <div style={{ padding: "40px", textAlign: "center", color: "var(--text-tertiary)" }}>Loading...</div>
+          )}
 
-        {/* Allowed roots */}
-        <GlassCard padding="12px">
-          <div style={labelStyle}>Allowed File Roots</div>
-          {settings.allowed_roots.map((root, i) => (
-            <div key={i} style={{ fontSize: "12px", padding: "4px 0", opacity: 0.8, fontFamily: "monospace" }}>{root}</div>
-          ))}
-        </GlassCard>
-
-        {/* Tool risk levels */}
-        <GlassCard padding="12px">
-          <div style={labelStyle}>Tool Risk Levels</div>
-          <div style={{ maxHeight: "200px", overflowY: "auto" }}>
-            {Object.entries(settings.tool_risk_levels).map(([tool, level]) => (
-              <div key={tool} style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", padding: "3px 0" }}>
-                <span style={{ fontFamily: "monospace" }}>{tool}</span>
-                <span style={{
-                  color: level === "safe" ? "#4f4" : level === "blocked" ? "#f44" : "#ff4",
-                  fontWeight: 600,
-                  fontSize: "11px",
-                }}>{level}</span>
+          {settings && (
+            <>
+              {/* Models */}
+              <div>
+                <div style={sectionTitleStyle}>Agent Models</div>
+                <div style={{ ...cardStyle, display: "flex", flexDirection: "column", gap: "12px" }}>
+                  {Object.entries(settings.models).map(([role, model]) => (
+                    <div key={role}>
+                      <div style={{ fontSize: "12px", fontWeight: 600, marginBottom: "6px", textTransform: "capitalize", color: "var(--text-secondary)" }}>
+                        {role}
+                      </div>
+                      <input
+                        style={inputStyle}
+                        value={model}
+                        onChange={(e) => setSettings({ ...settings, models: { ...settings.models, [role]: e.target.value } })}
+                        onBlur={(e) => updateModel(role, e.target.value)}
+                        onFocus={(e) => { (e.target as HTMLElement).style.borderColor = "var(--border-focus)"; }}
+                      />
+                    </div>
+                  ))}
+                </div>
               </div>
-            ))}
-          </div>
-        </GlassCard>
+
+              {/* Safety */}
+              <div>
+                <div style={sectionTitleStyle}>Safety</div>
+                <div style={cardStyle}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <span style={{ fontSize: "13px", color: "var(--text-secondary)" }}>
+                      Require confirmation for dangerous tools
+                    </span>
+                    <button
+                      onClick={toggleConfirmation}
+                      style={toggleStyle(settings.confirmation_enabled)}
+                    >
+                      <div style={toggleDotStyle(settings.confirmation_enabled)} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Allowed roots */}
+              <div>
+                <div style={sectionTitleStyle}>Allowed File Roots</div>
+                <div style={cardStyle}>
+                  {settings.allowed_roots.map((root, i) => (
+                    <div key={i} style={{ fontSize: "12px", padding: "4px 0", color: "var(--text-secondary)", fontFamily: "'JetBrains Mono', monospace" }}>
+                      {root}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Tool risk levels */}
+              <div>
+                <div style={sectionTitleStyle}>Tool Risk Levels</div>
+                <div style={{ ...cardStyle, maxHeight: "200px", overflowY: "auto" }}>
+                  {Object.entries(settings.tool_risk_levels).map(([tool, level]) => (
+                    <div key={tool} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "12px", padding: "4px 0" }}>
+                      <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "var(--text-secondary)" }}>{tool}</span>
+                      <span style={{
+                        color: level === "safe" ? "var(--success)" : level === "blocked" ? "var(--error)" : "var(--creator)",
+                        fontWeight: 600,
+                        fontSize: "11px",
+                        textTransform: "uppercase",
+                      }}>{level}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Omni Connectors Shortcut */}
+              <div>
+                <div style={sectionTitleStyle}>Extensions</div>
+                <div style={cardStyle}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                    <div style={{ fontSize: "13px", color: "var(--text-secondary)" }}>
+                      Manage MCP servers and external tools.
+                    </div>
+                    <button
+                      onClick={() => {
+                        onClose();
+                        (window as any).showConnectors?.();
+                      }}
+                      style={{
+                        padding: "10px",
+                        background: "var(--accent)",
+                        border: "none",
+                        borderRadius: "var(--radius-md)",
+                        color: "#fff",
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        fontSize: "13px",
+                      }}
+                    >
+                      Open Omni Connectors
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
