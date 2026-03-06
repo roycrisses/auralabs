@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import shutil
+import python_multipart  # noqa: F401
 import uuid
 from pathlib import Path
 

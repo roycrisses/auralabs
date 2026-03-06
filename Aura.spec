@@ -74,7 +74,8 @@ hiddenimports = [
     'GPUtil',
     'yaml',
     'rich',
-    'multipart',
+    'python_multipart',
+    'python_multipart.multipart',
 ]
 
 # Collect all data, binaries and hiddenimports for main libraries
