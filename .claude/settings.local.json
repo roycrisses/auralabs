@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls:*)",
+      "Bash(wc:*)",
+      "Bash(python:*)",
+      "Bash(where:*)",
+      "Bash(pip show:*)",
+      "Bash(pyinstaller:*)",
+      "Bash(pnpm install:*)",
+      "Bash(pnpm build:*)",
+      "Bash(pnpm tauri:*)",
+      "Bash(tasklist.exe:*)",
+      "Bash(powershell.exe:*)",
+      "Bash(pip install:*)"
+    ]
+  }
+}
