@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uvicorn
-import multipart  # Explicitly import for PyInstaller bundling
+import python_multipart  # Explicitly import for PyInstaller bundling
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 

@@ -78,7 +78,7 @@ hiddenimports = [
 ]
 
 # Collect all data, binaries and hiddenimports for main libraries
-for pkg in ['uvicorn', 'fastapi', 'starlette', 'multipart', 'langchain_core', 'langchain_openai', 'langgraph', 'pydantic', 'httpx', 'rich']:
+for pkg in ['uvicorn', 'fastapi', 'starlette', 'python_multipart', 'langchain_core', 'langchain_openai', 'langgraph', 'pydantic', 'httpx', 'rich']:
     tmp_ret = collect_all(pkg)
     datas += tmp_ret[0]
     binaries += tmp_ret[1]
