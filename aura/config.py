@@ -3,12 +3,16 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 
+from dotenv import load_dotenv
 from pydantic import BaseModel
+
+load_dotenv()
 
 KEYS_FILE = Path(r"D:\automation\AI keys and tetails.txt")
 
@@ -117,8 +121,9 @@ HARDWARE = HardwareProfile()
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
     """Load settings with OpenRouter details."""
+    key = os.getenv("AURA_OPENROUTER_KEY", "")
     return Settings(
-        nvidia_api_keys=["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"],
+        nvidia_api_keys=[key] if key else [],
         nvidia_base_url="https://openrouter.ai/api/v1"
     )
 
