@@ -1,164 +1,103 @@
-"""Build script for AgentAura.exe — bundles Python backend + Tauri/React UI.
-
-Usage: python build.py
-
-Steps:
-1. Build the Python backend into aura-server.exe via PyInstaller
-2. Copy aura-server.exe into ui/src-tauri/bin/
-3. Build the Tauri app (compiles React UI + Rust wrapper)
-4. Output: ui/src-tauri/target/release/AgentAura.exe
-"""
-
 import os
-import shutil
 import subprocess
+import shutil
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).parent.resolve()
+# Project structure
+ROOT = Path(__file__).parent.absolute()
+BACKEND_DIR = ROOT
 UI_DIR = ROOT / "ui"
 TAURI_DIR = UI_DIR / "src-tauri"
-TAURI_BIN = TAURI_DIR / "bin"
-DIST_DIR = ROOT / "dist"
 
-
-def step(msg: str):
-    print(f"\n{'='*60}")
-    print(f"  {msg}")
-    print(f"{'='*60}\n")
-
-
-def run(cmd: list[str], cwd: Path | None = None, check: bool = True):
-    print(f"  > {' '.join(cmd)}")
-    result = subprocess.run(cmd, cwd=str(cwd or ROOT), shell=True)
+def run(cmd, cwd=None, check=True):
+    if isinstance(cmd, list):
+        cmd_str = ' '.join(cmd)
+    else:
+        cmd_str = cmd
+    
+    print(f"\n  > {cmd_str}")
+    # On Windows, we must use shell=True for 'call', 'pnpm', etc.
+    result = subprocess.run(cmd_str, cwd=cwd, shell=True)
     if check and result.returncode != 0:
         print(f"  ERROR: Command failed with code {result.returncode}")
-        sys.exit(1)
+        sys.exit(result.returncode)
     return result
 
-
-def build_python_backend():
-    """Step 1: Build aura-server.exe with PyInstaller."""
-    step("Building Python backend (aura-server.exe)")
-
-    run([sys.executable, "-m", "PyInstaller", "--clean", "--noconfirm", "Aura.spec"], cwd=ROOT)
-
-
-    exe_path = ROOT / "dist" / "aura-server.exe"
-    if not exe_path.exists():
-        print(f"  ERROR: {exe_path} not found after build!")
-        sys.exit(1)
-
-    print(f"  Built: {exe_path} ({exe_path.stat().st_size / 1024 / 1024:.1f} MB)")
-    return exe_path
-
-
-def copy_sidecar(exe_path: Path):
-    """Step 2: Copy aura-server.exe into Tauri bin directory."""
-    step("Copying sidecar to Tauri bin/")
-
-    TAURI_BIN.mkdir(parents=True, exist_ok=True)
-
-    # Tauri expects the sidecar name to match the platform triple
-    # For Windows x86_64: aura-server-x86_64-pc-windows-msvc.exe
-    target_triple = "x86_64-pc-windows-msvc"
-    dest = TAURI_BIN / f"aura-server-{target_triple}.exe"
-
-    shutil.copy2(str(exe_path), str(dest))
-    print(f"  Copied to: {dest}")
-
-    # Also copy without triple for our manual spawn
-    dest_plain = TAURI_BIN / "aura-server.exe"
-    shutil.copy2(str(exe_path), str(dest_plain))
-    print(f"  Copied to: {dest_plain}")
-
-
-def build_tauri():
-    """Step 3: Build the Tauri application."""
-    step("Building Tauri application (AgentAura.exe)")
-
-    # First ensure node_modules are installed
-    if not (UI_DIR / "node_modules").exists():
-        run(["pnpm", "install"], cwd=UI_DIR)
-
-    # Build the Tauri app
-    run(["pnpm", "tauri", "build"], cwd=UI_DIR)
-
-    # Find the output exe
-    release_dir = TAURI_DIR / "target" / "release"
-    exe_candidates = list(release_dir.glob("AgentAura.exe")) + list(release_dir.glob("aura.exe"))
-
-    if exe_candidates:
-        final_exe = exe_candidates[0]
-        print(f"\n  SUCCESS: {final_exe} ({final_exe.stat().st_size / 1024 / 1024:.1f} MB)")
-    else:
-        # Check in bundle dir
-        bundle_dir = release_dir / "bundle"
-        if bundle_dir.exists():
-            for p in bundle_dir.rglob("*.exe"):
-                print(f"  Found bundle: {p}")
-            for p in bundle_dir.rglob("*.msi"):
-                print(f"  Found installer: {p}")
-        print(f"\n  Build complete. Check {release_dir} for output.")
-
-
-def deploy_to_agentaura():
-    """Step 4: Copy final artifacts to D:\\agentaura."""
-    step("Deploying to D:\\agentaura")
-    
-    DEST = Path(r"D:\agentaura")
-    DEST.mkdir(parents=True, exist_ok=True)
-    
-    # Source paths
-    release_dir = TAURI_DIR / "target" / "release"
-    exe_path = release_dir / "AgentAura.exe"
-    
-    if not exe_path.exists():
-        # Try finding in bundle msi or setup
-        msi_paths = list((release_dir / "bundle" / "msi").glob("*.msi"))
-        if msi_paths:
-            print(f"  Found installer: {msi_paths[0]}")
-            shutil.copy2(str(msi_paths[0]), str(DEST / msi_paths[0].name))
-
-    if exe_path.exists():
-        shutil.copy2(str(exe_path), str(DEST / "AgentAura.exe"))
-        print(f"  Copied AgentAura.exe to {DEST}")
-    
-    # Also copy the sidecar just in case manual start is needed
-    sidecar = ROOT / "dist" / "aura-server.exe"
-    if sidecar.exists():
-        shutil.copy2(str(sidecar), str(DEST / "aura-server.exe"))
-        print(f"  Copied aura-server.exe to {DEST}")
-
-    # Copy any other resources if needed
-    # ...
-
-
 def main():
+    skip_backend = "--skip-backend" in sys.argv
+    
     print("=" * 60)
     print("  AgentAura Build System")
     print("=" * 60)
 
-    # Step 1: Python backend
-    exe_path = build_python_backend()
+    if not skip_backend:
+        print("\n" + "=" * 60)
+        print("  Building Python backend (aura-server.exe)")
+        print("=" * 60)
+        
+        # Build the backend with PyInstaller
+        # We use the spec file for consistent builds
+        python_exe = sys.executable
+        run([python_exe, "-m", "PyInstaller", "--clean", "--noconfirm", "Aura.spec"])
+    else:
+        print("\n  [Skipping Python backend build]")
 
-    # Step 2: Copy sidecar
-    copy_sidecar(exe_path)
+    print("\n" + "=" * 60)
+    print("  Preparing UI (pnpm build)")
+    print("=" * 60)
+    
+    # Ensure UI dependencies are installed
+    if not (UI_DIR / "node_modules").exists():
+        run(["pnpm", "install"], cwd=UI_DIR)
 
-    # Step 3: Build Tauri
-    build_tauri()
+    # Note: Tauri build performs pnpm build internally if configured in tauri.conf.json
+    # But we'll do it explicitly if needed, or just let Tauri handle it.
+    
+    print("\n" + "=" * 60)
+    print("  Copying sidecar to Tauri bin/")
+    print("=" * 60)
+    
+    # The built server needs to be placed where Tauri expects it as a sidecar
+    # Tauri expects the binary name to include the target triple
+    bin_dir = TAURI_DIR / "bin"
+    bin_dir.mkdir(exist_ok=True)
+    
+    server_exe = ROOT / "dist" / "aura-server.exe"
+    if not server_exe.exists():
+        print(f"  ERROR: Could not find {server_exe}. Backend build might have failed.")
+        sys.exit(1)
+        
+    # Standard sidecar name: [binary]-[target-triple].exe
+    # For Windows x64: aura-server-x86_64-pc-windows-msvc.exe
+    target_exe = bin_dir / "aura-server-x86_64-pc-windows-msvc.exe"
+    shutil.copy2(server_exe, target_exe)
+    # Also copy as generic for local dev testing if needed
+    shutil.copy2(server_exe, bin_dir / "aura-server.exe")
+    
+    print(f"\n  Copied to: {target_exe}")
+    print(f"  Copied to: {bin_dir / 'aura-server.exe'}")
 
-    # Step 4: Deploy
-    deploy_to_agentaura()
+    print("\n" + "=" * 60)
+    print("  Building Tauri application (AgentAura.exe)")
+    print("=" * 60)
+    
+    # Use vcvars64.bat on Windows to ensure MSVC (cl.exe) is in the PATH
+    vcvars_path = r"C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat"
+    if os.path.exists(vcvars_path):
+        cmd = f'call "{vcvars_path}" && pnpm tauri build'
+        run(cmd, cwd=UI_DIR)
+    else:
+        run(["pnpm", "tauri", "build"], cwd=UI_DIR)
 
-    step("BUILD COMPLETE!")
-    print("  Output locations:")
-    print(f"    Backend: {ROOT / 'dist' / 'aura-server.exe'}")
-    print(f"    Sidecar: {TAURI_BIN / 'aura-server.exe'}")
-    print(f"    App:     {TAURI_DIR / 'target' / 'release'}")
-    print(f"    Deploy:  D:\\agentaura")
-    print()
-
+    # Find the output exe
+    release_dir = TAURI_DIR / "target" / "release"
+    bundle_dir = release_dir / "bundle" / "msi" # Or 'exe' depending on config
+    
+    print("\n" + "=" * 60)
+    print("  Build complete!")
+    print("=" * 60)
+    print(f"\n  Find your application in: {release_dir}")
 
 if __name__ == "__main__":
     main()
