@@ -13,12 +13,12 @@ from pydantic import BaseModel
 KEYS_FILE = Path(r"D:\automation\AI keys and tetails.txt")
 
 MODEL_REGISTRY: dict[str, str] = {
-    "router": "meta/llama-3.1-8b-instruct",
-    "kernel": "meta/llama-3.1-70b-instruct",
-    "researcher": "meta/llama-3.1-70b-instruct",
-    "creator": "meta/llama-3.1-70b-instruct",
-    "vision": "nvidia/llama-3.2-nvlm-1.1-72b-instruct",
-    "reward": "nvidia/llama-3.1-nemotron-70b-reward",
+    "router": "stepfun/step-3.5-flash:free",
+    "kernel": "stepfun/step-3.5-flash:free",
+    "researcher": "stepfun/step-3.5-flash:free",
+    "creator": "stepfun/step-3.5-flash:free",
+    "vision": "stepfun/step-3.5-flash:free",
+    "reward": "stepfun/step-3.5-flash:free",
 }
 
 # Map each model to which API key it should use (index into parsed keys list).
@@ -99,7 +99,7 @@ def list_byok() -> dict[str, dict[str, str]]:
 
 class Settings(BaseModel):
     nvidia_api_keys: list[str]
-    nvidia_base_url: str = "https://integrate.api.nvidia.com/v1"
+    nvidia_base_url: str = "https://openrouter.ai/api/v1"
 
 
 @dataclass(frozen=True)
@@ -116,35 +116,11 @@ HARDWARE = HardwareProfile()
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
-    """Load settings from the keys file. Supports both JSON and code-snippet formats."""
-    if not KEYS_FILE.exists():
-        raise FileNotFoundError(
-            f"API keys file not found: {KEYS_FILE}\n"
-            'Create it with your NVIDIA NIM API key(s).'
-        )
-
-    # Try secure (encrypted) loading first, fallback to plaintext
-    try:
-        from aura.security import load_keys_secure
-        text = load_keys_secure()
-    except Exception:
-        text = KEYS_FILE.read_text(encoding="utf-8")
-
-    # Try JSON format first (backwards compatible)
-    try:
-        raw = json.loads(text)
-        key = raw.get("nvidia_nim_api_key", "")
-        base = raw.get("nvidia_nim_base_url", "https://integrate.api.nvidia.com/v1")
-        return Settings(nvidia_api_keys=[key], nvidia_base_url=base)
-    except (json.JSONDecodeError, KeyError):
-        pass
-
-    # Parse API keys from code snippets (nvapi-xxx patterns)
-    keys = list(dict.fromkeys(re.findall(r'nvapi-[A-Za-z0-9_\-]+', text)))
-    if not keys:
-        raise ValueError(f"No API keys (nvapi-...) found in {KEYS_FILE}")
-
-    return Settings(nvidia_api_keys=keys)
+    """Load settings with OpenRouter details."""
+    return Settings(
+        nvidia_api_keys=["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"],
+        nvidia_base_url="https://openrouter.ai/api/v1"
+    )
 
 
 def get_api_key(agent_role: str = "kernel") -> str:
