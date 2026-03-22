@@ -1,0 +1,28 @@
+[package]
+name = "agent-aura"
+version = "0.1.0"
+description = "Agent Aura — Multi-Agent Desktop Orchestrator"
+edition = "2021"
+
+[lib]
+name = "aura_lib"
+crate-type = ["lib", "cdylib", "staticlib"]
+
+[[bin]]
+name = "AgentAura"
+path = "src/main.rs"
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-global-shortcut = "2"
+tauri-plugin-shell = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[profile.release]
+strip = true
+lto = true
+codegen-units = 1
