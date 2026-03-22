@@ -50,9 +50,7 @@ def _analyze_image(image_path: Path, prompt: str) -> str:
     from langchain_openai import ChatOpenAI
     from langchain_core.messages import HumanMessage
 
-    from aura.config import MODEL_REGISTRY, get_api_key, get_settings
-
-    settings = get_settings()
+    from aura.config import MODEL_REGISTRY, get_api_key, get_base_url
 
     # Encode image as base64
     image_data = base64.b64encode(image_path.read_bytes()).decode("utf-8")
@@ -64,7 +62,7 @@ def _analyze_image(image_path: Path, prompt: str) -> str:
 
     # Use the registered vision model
     llm = ChatOpenAI(
-        base_url=settings.nvidia_base_url,
+        base_url=get_base_url("vision"),
         api_key=get_api_key("vision"),
         model=MODEL_REGISTRY.get("vision", "nvidia/llama-3.1-nemotron-nano-vl-8b-v1"),
         max_tokens=1024,

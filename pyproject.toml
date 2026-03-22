@@ -26,6 +26,7 @@ dependencies = [
     "chromadb>=0.5",
     "sentence-transformers>=3.0",
     "watchdog>=4.0",
+    "python-dotenv>=1.0",
 ]
 
 [project.optional-dependencies]

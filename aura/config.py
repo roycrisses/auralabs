@@ -120,12 +120,57 @@ HARDWARE = HardwareProfile()
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
-    """Load settings with OpenRouter details."""
-    key = os.getenv("AURA_OPENROUTER_KEY", "")
+    """Load settings with API keys from environment and file."""
+    keys = []
+    
+    # Priority 1: Environment variable
+    env_key = os.getenv("AURA_OPENROUTER_KEY", "")
+    if env_key:
+        keys.append(env_key)
+
+    # Priority 2: External file
+    if KEYS_FILE.exists():
+        try:
+            content = KEYS_FILE.read_text(encoding="utf-8")
+            # OpenRouter: sk-or-v1-...
+            or_keys = re.findall(r"(sk-or-v1-[a-zA-Z0-9]+)", content)
+            # NVIDIA: nvapi-...
+            nv_keys = re.findall(r"(nvapi-[a-zA-Z0-9\-_]+)", content)
+            
+            keys.extend(or_keys)
+            keys.extend(nv_keys)
+        except Exception:
+            pass
+
+    # Deduplicate while preserving order
+    deduped_keys = list(dict.fromkeys(keys))
+    
+    # For now, we still return a single base_url in Settings for backward compatibility,
+    # but we will likely move to a more dynamic dispatch.
+    # Default to OpenRouter if any OR keys found, otherwise NVIDIA if any NV keys found.
+    base_url = "https://openrouter.ai/api/v1"
+    if deduped_keys and deduped_keys[0].startswith("nvapi-"):
+        base_url = "https://integrate.api.nvidia.com/v1"
+
     return Settings(
-        nvidia_api_keys=[key] if key else [],
-        nvidia_base_url="https://openrouter.ai/api/v1"
+        nvidia_api_keys=deduped_keys,
+        nvidia_base_url=base_url
     )
+
+
+def get_base_url(agent_role: str = "kernel") -> str:
+    """Get the appropriate base URL for a given agent role."""
+    byok = get_byok(agent_role)
+    if byok:
+        return byok["base_url"]
+
+    settings = get_settings()
+    key = get_api_key(agent_role)
+    
+    if key.startswith("nvapi-"):
+        return "https://integrate.api.nvidia.com/v1"
+    
+    return settings.nvidia_base_url
 
 
 def get_api_key(agent_role: str = "kernel") -> str:
@@ -136,10 +181,14 @@ def get_api_key(agent_role: str = "kernel") -> str:
         return byok["api_key"]
 
     settings = get_settings()
+    if not settings.nvidia_api_keys:
+        return ""
+
     key_index = MODEL_KEY_MAP.get(agent_role, 0)
-    # Clamp to available keys
-    key_index = min(key_index, len(settings.nvidia_api_keys) - 1)
-    return settings.nvidia_api_keys[key_index]
+    # Clamp to available keys safely
+    num_keys = len(settings.nvidia_api_keys)
+    actual_index = min(max(0, key_index), num_keys - 1)
+    return settings.nvidia_api_keys[actual_index]
 
 
 # Load saved BYOK overrides on import
